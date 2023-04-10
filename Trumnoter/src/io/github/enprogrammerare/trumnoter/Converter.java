@@ -11,10 +11,12 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
+/**
+ * This class is responsible for converting a MusicXML document to drum sheet music.
+ * @author en-programmerare
+ *
+ */
 public class Converter {
-
-	static final double TWELTH_ROOT_OF_TWO = 1.05946309435929;
-	static final int TUNING = 440;
 
 	private PrintStream debugStream;
 
@@ -45,12 +47,12 @@ public class Converter {
 		((Element) template.getElementsByTagName("encoding-date").item(0)).setTextContent(new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
 		debug(0, "Current date is " + new Date());
 		
-		Frequency[] frequencies = getFrequencies(getTones(document, partNumber));
+		SheetMusicElement[] elements = getTones(document, partNumber);
 		Element part = (Element) template.getElementsByTagName("part").item(0);
 		int numberOfBars = 0;
 		
 		debugStream.println("Generating document.");
-		for (Frequency freq : frequencies) {
+		for (SheetMusicElement element : elements) {
 			numberOfBars++;
 			
 			Element measure = template.createElement("measure");
@@ -60,98 +62,84 @@ public class Converter {
 			
 			//Klav och sånt krävs bara en gång.
 			if (numberOfBars == 1) {
-				//Ställ in divisions
-				Element divisions = template.createElement("divisions");
-				divisions.appendChild(template.createTextNode("8")); //Hårdkodat. Allt annat bygger på detta värde.
-				attributes.appendChild(divisions);
-				
-				//Skapa och lägg in trumklav
-				Element clef = template.createElement("clef");
-				Element sign = template.createElement("sign");
-				sign.appendChild(template.createTextNode("percussion"));
-				clef.appendChild(sign);
-				attributes.appendChild(clef);
+				//8 divisions är hårdkodat. Alla beräkningar bygger på det.
+				attributes.appendChild(MusicXMLTools.createDivisionsAttributeElement(8, template));
+				attributes.appendChild(MusicXMLTools.createClefAttributeElement("percussion", template));
 			}
 			
-			double bpm = freq.frequency(); //Hur många BPM takten ska ha.
-			double minutes = freq.tone().duration(); //Hur många minuter tonen ska vara.
-			int numberOfNotes = (int) Math.round(bpm * minutes * 32 / 4);  //antal 32-delsnoter som krävs.
+			// En linje per notrad i trumnoter.
+			attributes.appendChild(MusicXMLTools.createStaffDetailsAttributeElement(1, template));
 			
-			//Skapa taktart för varje takt. Den är <antaltoner>/32.
-			Element time = template.createElement("time");
-			//time.setAttribute("print-direct", "yes");
-			Element beats = template.createElement("beats");
-			beats.setTextContent(String.valueOf(numberOfNotes));
-			Element beatType = template.createElement("beat-type");
-			beatType.setTextContent("32");
-			time.appendChild(beats);
-			time.appendChild(beatType);
-			attributes.appendChild(time);
-			
-			//Säg att ha en notrad
-			Element staffDetails = template.createElement("staff-details");
-			Element staffLines = template.createElement("staff-lines");
-			staffLines.setTextContent("1");
-			staffDetails.appendChild(staffLines);
-			attributes.appendChild(staffDetails);
-			
-			//Infoga attributes till takten.
-			measure.appendChild(attributes);
-			
-			
-			//Skapa en tempoangivelse
-			Element direction = template.createElement("direction");
-			direction.setAttribute("placement", "above");
-			Element directionType = template.createElement("direction-type");
-			Element metronome = template.createElement("metronome");
-			Element beatUnit = template.createElement("beat-unit");
-			beatUnit.setTextContent("quarter");
-			Element perMinute = template.createElement("per-minute");
-			perMinute.setTextContent(String.valueOf(freq.frequency()));
-			metronome.appendChild(beatUnit);
-			metronome.appendChild(perMinute);
-			directionType.appendChild(metronome);
-			direction.appendChild(directionType);
-			Element sound = template.createElement("sound");
-			sound.setAttribute("tempo", String.valueOf(bpm));
-			direction.appendChild(sound);
-			measure.appendChild(direction);
-			
-			//Skapa alla trumslag i takten.
-			for (int i = 0; i < numberOfNotes; i++) {
-				//Skapa info om allt som inte är tonhöjd: längd, sammanbindning, längd och voice.
+			if (element.isRest()) {
+				double minutes = element.getDuration();
+				
+				measure.appendChild(MusicXMLTools.createTempoElement(1 / minutes, 1 / minutes, template));
+				
+				
 				Element note = template.createElement("note");
 				Element duration = template.createElement("duration");
-				duration.setTextContent("1");
+				duration.setTextContent("8");
 				Element voice = template.createElement("voice");
 				voice.setTextContent("1");
-				Element type = template.createElement("type");
-				type.setTextContent("32nd");
-				Element beam = template.createElement("beam");
-				beam.setAttribute("number", "1");
-				beam.setTextContent(String.valueOf(getBeamingType(i, numberOfNotes)));
 				
-				//Skapa info om tonhöjd.
-				Element unpitched = template.createElement("unpitched");
-				Element displayStep = template.createElement("display-step");
-				Element displayOctave = template.createElement("display-octave");
-				Element instrument = template.createElement("instrument");
-				displayStep.setTextContent("F");
-				displayOctave.setTextContent("4");
-				instrument.setAttribute("id", "P1-I77");
-				unpitched.appendChild(displayStep);
-				unpitched.appendChild(displayOctave);
-				
-				note.appendChild(unpitched);
+				Element rest = template.createElement("rest");
+				rest.setAttribute("measure", "yes");
 				note.appendChild(duration);
-                note.appendChild(voice);
-                note.appendChild(type);
-                note.appendChild(beam);
-                note.appendChild(instrument);
-                
-                measure.appendChild(note);
+				note.appendChild(voice);
+				note.appendChild(rest);
+				
+				measure.appendChild(note);
+				
+				attributes.appendChild(MusicXMLTools.createTimeSignatureAttributeElement(1, 4, template));
 				
 			}
+			else {
+				double bpm = element.getFrequency(); // Hur många BPM takten ska ha.
+				double minutes = element.getDuration(); // Hur många minuter tonen ska vara.
+				int numberOfNotes = (int) Math.round(bpm * minutes * 32 / 4); // antal 32-delsnoter som krävs.
+
+				attributes.appendChild(MusicXMLTools.createTimeSignatureAttributeElement(numberOfNotes, 32, template));
+				
+				// Skapa en tempoangivelse
+				measure.appendChild(MusicXMLTools.createTempoElement(bpm, bpm, template));
+
+				// Skapa alla trumslag i takten.
+				for (int i = 0; i < numberOfNotes; i++) {
+					// Skapa info om allt som inte är tonhöjd: längd, sammanbindning, längd och voice.
+					Element note = template.createElement("note");
+					Element duration = template.createElement("duration");
+					duration.setTextContent("1");
+					Element voice = template.createElement("voice");
+					voice.setTextContent("1");
+					Element type = template.createElement("type");
+					type.setTextContent("32nd");
+					Element beam = template.createElement("beam");
+					beam.setAttribute("number", "1");
+					beam.setTextContent(String.valueOf(getBeamingType(i, numberOfNotes)));
+
+					// Skapa info om tonhöjd.
+					Element unpitched = template.createElement("unpitched");
+					Element displayStep = template.createElement("display-step");
+					Element displayOctave = template.createElement("display-octave");
+					Element instrument = template.createElement("instrument");
+					displayStep.setTextContent("F");
+					displayOctave.setTextContent("4");
+					instrument.setAttribute("id", "P1-I77");
+					unpitched.appendChild(displayStep);
+					unpitched.appendChild(displayOctave);
+
+					note.appendChild(unpitched);
+					note.appendChild(duration);
+					note.appendChild(voice);
+					note.appendChild(type);
+					note.appendChild(beam);
+					note.appendChild(instrument);
+
+					measure.appendChild(note);
+
+				}
+			}
+			measure.appendChild(attributes);
 			part.appendChild(measure);
 		}
 		
@@ -160,16 +148,14 @@ public class Converter {
 	}
 
 	/**
-	 * Returns a list of all tones in the document. Debug information is printed to
-	 * the specified PrintStream.
-	 * 
+	 * Returns a list of all tones in the document.
 	 * @param document   A MusicXML document.
 	 * @param partNumber The part number to read.
 	 * @return Array of tones.
 	 */
-	Tone[] getTones(Document document, int partNumber) {
-		debugStream.println("Interptreting...");
-		List<Tone> tones = new ArrayList<>();
+	SheetMusicElement[] getTones(Document document, int partNumber) {
+		debugStream.println("Interpreting...");
+		List<SheetMusicElement> tones = new ArrayList<>();
 
 		int divisions = 32;
 		int tempo = 120;
@@ -212,10 +198,9 @@ public class Converter {
 			for (int j = 0; j < noteElements.getLength(); j++) {
 				Element noteElement = (Element) noteElements.item(j);
 				Element pitch = (Element) noteElement.getElementsByTagName("pitch").item(0);
-				Element pause = (Element) noteElement.getElementsByTagName("pause").item(0);
+				Element rest = (Element) noteElement.getElementsByTagName("rest").item(0);
 
 				if (pitch != null) {
-					
 					if (noteElement.getElementsByTagName("grace").getLength() > 0)
 						continue;
 					
@@ -229,38 +214,40 @@ public class Converter {
 					short octave = Short.parseShort(((Element) noteElement.getElementsByTagName("octave").item(0)).getTextContent());
 
 					float duration = (Float.parseFloat(((Element) noteElement.getElementsByTagName("duration").item(0)).getTextContent()) / divisions) / tempo;
-
-					tones.add(new Tone(getToneNumber(tone, alter, octave), duration));
+					
+					tones.add(SheetMusicElement.createNote(tone, alter, octave, duration));
+				}
+				else if (rest != null) {
+					float duration = (Float.parseFloat(((Element) noteElement.getElementsByTagName("duration").item(0)).getTextContent()) / divisions) / tempo;
+					tones.add(SheetMusicElement.createRest(duration));
 				}
 			}
 		}
 		
 		debugStream.println("Found " + tones.size() + " notes.");
-		return tones.toArray(new Tone[tones.size()]);
+		return tones.toArray(new SheetMusicElement[tones.size()]);
 	}
 
-	Frequency[] getFrequencies(Tone[] tones) {
-		debugStream.println("Calculating frequencies...");
-		List<Frequency> frequencies = new ArrayList<>();
-
-		for (Tone tone : tones) {
-			frequencies.add(new Frequency(tone));
-		}
-
-		return frequencies.toArray(new Frequency[frequencies.size()]);
-	}
-
-	public boolean isPartwise(Document document) {
+	
+	/**
+	 * Returns whether the specified Musicxml document is partwise.
+	 * @param document Document to check.
+	 * @return Whether partwise.
+	 */
+	public static boolean isPartwise(Document document) {
 		return document.getDocumentElement().getNodeName().equals("score-partwise");
 	}
 
-	void debug(int measure, String message) {
+	private void debug(int measure, String message) {
 		debugStream.println("[" + measure + "] " + message);
 	}
-
-	int getToneNumber(String tone, short alter, short octave) {
-		return tone.equals("pause") ? Integer.MIN_VALUE : "C-D-EF-G-A-B".indexOf(tone) + alter + octave * 12 - 57; //57 anger a1 som stämton. (0)
-	}
+	
+	/**
+	 * Returns the beaming type that should be used for this note
+	 * @param indexInMeasure The index of the current 32nd note in this measure.
+	 * @param notesInMeasure The total number of 32nd notes in the measure.
+	 * @return "begin", "continue", or "end", which can be used in this note's MusicXML element.
+	 */
 	String getBeamingType(int indexInMeasure, int notesInMeasure) {
 		if (indexInMeasure % 8 == 0)
 			return "begin";
@@ -269,7 +256,16 @@ public class Converter {
 		return "continue";
 	}
 	
-	static Part[] getParts(Document document) {
+	/**
+	 * Returns a list of parts in this MusicXML document.
+	 * @param document A partwise MusicXML document.
+	 * @return Whether the document is partwise.
+	 * @throws IllegalArgumentException If the document is not partwise.
+	 */
+	public static Part[] getParts(Document document) {
+		if (!isPartwise(document))
+			throw new IllegalArgumentException("Document is not partwise.");
+		
 		List<Part> parts = new ArrayList<>();
 		NodeList partsNodeList = document.getElementsByTagName("score-part");
 		
@@ -286,11 +282,18 @@ public class Converter {
 		}
 		return parts.toArray(new Part[0]);
 	}
-
+	
+	/**
+	 * Creates a converter that uses {@code System.out} for debug information.
+	 */
 	public Converter() {
 		this(System.out);
 	}
-
+	
+	/**
+	 * Creates a converter that uses the supplied stream for debug information.
+	 * @param debugStream Stream to print debug info to.
+	 */
 	public Converter(PrintStream debugStream) {
 		this.debugStream = debugStream;
 	}

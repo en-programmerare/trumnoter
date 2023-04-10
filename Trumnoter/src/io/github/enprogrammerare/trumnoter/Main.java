@@ -3,6 +3,7 @@ package io.github.enprogrammerare.trumnoter;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.PrintStream;
+import java.util.Locale;
 
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -16,15 +17,16 @@ import org.w3c.dom.Document;
 public class Main {
 
 	public static void main(String[] args) {
+		Messages messages = new Messages(Locale.getDefault().getLanguage());
 		
 		JFrame frame = new JFrame();
 		frame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
 		frame.setVisible(true);
-		frame.add(new JLabel("Till trumnoter"));
-		frame.setTitle("trumnoter");
+		frame.add(new JLabel(messages.get("window.content")));
+		frame.setTitle(messages.get("window.title"));
 		frame.setSize(100, 100);
 		
-		FileNameExtensionFilter filter = new FileNameExtensionFilter("Okomprimerade MusicXML-filer", "xml", "musicxml");
+		FileNameExtensionFilter filter = new FileNameExtensionFilter(messages.get("filter.name"), "xml", "musicxml");
 		
 		JFileChooser chooser = new JFileChooser();
 		chooser.setFileFilter(filter);
@@ -56,7 +58,7 @@ public class Main {
 		try {
 			Document document = XMLParser.read(toRead);
 			
-			Part part = (Part) JOptionPane.showInputDialog(frame, "Vänligen välj en stämma att konvertera:", "Val av stämma", JOptionPane.QUESTION_MESSAGE, null, Converter.getParts(document), null);
+			Part part = (Part) JOptionPane.showInputDialog(frame, messages.get("dialogue.part.content"), messages.get("dialogue.part.title"), JOptionPane.QUESTION_MESSAGE, null, Converter.getParts(document), null);
 			
 			if (part == null)
 				throw new IllegalArgumentException("Program cancelled by user.");
@@ -71,7 +73,7 @@ public class Main {
 		}
 		finally {
 			if (!finish)
-				JOptionPane.showMessageDialog(frame, "Ett fel har uppstått under programkörning och dina noter kunde ej konverteras. På näste sida finns mer information.", "Fel", JOptionPane.ERROR_MESSAGE);
+				JOptionPane.showMessageDialog(frame, messages.get("dialogue.error.content"), messages.get("dialogue.error.title"), JOptionPane.ERROR_MESSAGE);
 			
 			JOptionPane.showMessageDialog(frame, baos.toString());
 			frame.dispose();

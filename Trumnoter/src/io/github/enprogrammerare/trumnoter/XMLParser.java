@@ -17,8 +17,19 @@ import org.w3c.dom.Document;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
+/**
+ * Utility class for parsing XML documents.
+ * @author en-programmerare
+ *
+ */
 public class XMLParser {
-
+	
+	/**
+	 * Reads the supplied string and converts its content into an XML document.
+	 * @param xml A string containing xml.
+	 * @return An XML document.
+	 * @throws SAXException If the XML is malformed.
+	 */
 	public static Document read(String xml) throws SAXException {
 		try {
 			return DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new InputSource(new StringReader(xml)));
@@ -28,7 +39,12 @@ public class XMLParser {
 			throw new SAXException("Something very weird has happened.", e);
 		}
 	}
-
+	
+	/**
+	 * Converts an XML document into a string.
+	 * @param document A document to convert to a string.
+	 * @return A string containing the XML of the supplied document.
+	 */
 	public static String spell(Document document) {
 		try {
 			Transformer transformer = TransformerFactory.newInstance().newTransformer();
@@ -50,6 +66,13 @@ public class XMLParser {
 		return null;
 	}
 	
+	/**
+	 * Reads the supplied file and converts it into an XML document.
+	 * @param file File to read.
+	 * @return A document containing the contents of the file.
+	 * @throws SAXException If the XML is malformed.
+	 * @throws IOException If an I/O error occurs.
+	 */
 	public static Document read(File file) throws SAXException, IOException {
 		try {
 			return DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(file);
@@ -60,6 +83,11 @@ public class XMLParser {
 		}
 	}
 	
+	/**
+	 * Saves the supplied XML document into a file.
+	 * @param document XML document to save.
+	 * @param saveLocation Save location.
+	 */
 	public static void save(Document document, File saveLocation) {
 		try {
 			Transformer transformer = TransformerFactory.newInstance().newTransformer();
