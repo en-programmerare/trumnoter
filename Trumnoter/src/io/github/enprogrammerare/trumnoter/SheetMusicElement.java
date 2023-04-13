@@ -14,15 +14,17 @@ public class SheetMusicElement {
 	
 	private int tone;
 	private double duration;
+	private boolean shouldSlur;
 	
 	/**
 	 * Creates a note.
 	 * @param tone The note. a1 is 0, and every semitone is one step.
 	 * @param duration The duration of this tone in minutes.
+	 * @param shouldSlur Whether this note should be slurred when played. (used for notes in beginning of notated ties and slurs)
 	 * @return A note.
 	 */
-	public static SheetMusicElement createNote(int tone, double duration) {
-		return new SheetMusicElement(tone, duration);
+	public static SheetMusicElement createNote(int tone, double duration, boolean shouldSlur) {
+		return new SheetMusicElement(tone, duration, shouldSlur);
 	}
 	
 	/**
@@ -31,11 +33,12 @@ public class SheetMusicElement {
 	 * @param alter -1 = flat  0 = natural   1 = sharp
 	 * @param octave The octave. a1 is on octave 0.
 	 * @param duration The duration of this tone in minutes.
+	 * @param shouldSlur Whether this note should be slurred when played. (used for notes in beginning of notated ties and slurs)
 	 * @return A note.
 	 */
-	public static SheetMusicElement createNote(char name, short alter, short octave, double duration) {
+	public static SheetMusicElement createNote(char name, short alter, short octave, double duration, boolean shouldSlur) {
 		int tone = "C-D-EF-G-A-B".indexOf(name) + alter + octave * 12 - 57; //57 anger a1 som stämton. (0)
-		return new SheetMusicElement(tone, duration);
+		return new SheetMusicElement(tone, duration, shouldSlur);
 	}
 	
 	/**
@@ -44,11 +47,12 @@ public class SheetMusicElement {
 	 * @param alter -1 = flat  0 = natural   1 = sharp
 	 * @param octave The octave. a1 is on octave 0.
 	 * @param duration The duration of this tone in minutes.
+	 * @param shouldSlur Whether this note should be slurred when played. (used for notes in beginning of notated ties and slurs)
 	 * @return A note.
 	 */
-	public static SheetMusicElement createNote(String name, short alter, short octave, double duration) {
+	public static SheetMusicElement createNote(String name, short alter, short octave, double duration, boolean shouldSlur) {
 		int tone = "C-D-EF-G-A-B".indexOf(name) + alter + octave * 12 - 57; //57 anger a1 som stämton. (0)
-		return new SheetMusicElement(tone, duration);
+		return new SheetMusicElement(tone, duration, shouldSlur);
 	}
 	
 	/**
@@ -57,12 +61,13 @@ public class SheetMusicElement {
 	 * @return A rest.
 	 */
 	public static SheetMusicElement createRest(double duration) {
-		return new SheetMusicElement(Integer.MIN_VALUE, duration);
+		return new SheetMusicElement(Integer.MIN_VALUE, duration, false);
 	}
 
-	private SheetMusicElement(int tone, double duration) {
+	private SheetMusicElement(int tone, double duration, boolean shouldSlur) {
 		this.tone = tone;
 		this.duration = duration;
+		this.shouldSlur = shouldSlur;
 	}
 	
 	/**
@@ -109,6 +114,12 @@ public class SheetMusicElement {
 			throw new UnsupportedOperationException("A rest does not have a frequency.");
 		
 		 return (TUNING * Math.pow(TWELTH_ROOT_OF_TWO, tone)) * 60 / 32;
+	}
+	
+	public boolean shouldSlur() {
+		if (isRest())
+			throw new UnsupportedOperationException("A rest cannot be slurred.");
+		return shouldSlur;
 	}
 
 }

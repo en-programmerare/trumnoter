@@ -74,25 +74,12 @@ public class Converter {
 				double minutes = element.getDuration();
 				
 				measure.appendChild(MusicXMLTools.createTempoElement(1 / minutes, 1 / minutes, template));
-				
-				
-				Element note = template.createElement("note");
-				Element duration = template.createElement("duration");
-				duration.setTextContent("8");
-				Element voice = template.createElement("voice");
-				voice.setTextContent("1");
-				
-				Element rest = template.createElement("rest");
-				rest.setAttribute("measure", "yes");
-				note.appendChild(duration);
-				note.appendChild(voice);
-				note.appendChild(rest);
-				
-				measure.appendChild(note);
+				measure.appendChild(MusicXMLTools.createRest(8, "quarter", true, template));
 				
 				attributes.appendChild(MusicXMLTools.createTimeSignatureAttributeElement(1, 4, template));
 				
 			}
+			//Annars = om detta är en not
 			else {
 				double bpm = element.getFrequency(); // Hur många BPM takten ska ha.
 				double minutes = element.getDuration(); // Hur många minuter tonen ska vara.
@@ -102,42 +89,18 @@ public class Converter {
 				
 				// Skapa en tempoangivelse
 				measure.appendChild(MusicXMLTools.createTempoElement(bpm, bpm, template));
+				
+				//Den sista tonen ersätts av en paus om inte anslag ska göras.
+				int numberOfNotesToCreate = element.shouldSlur() ? numberOfNotes : numberOfNotes - 1;
+				
 
 				// Skapa alla trumslag i takten.
-				for (int i = 0; i < numberOfNotes; i++) {
-					// Skapa info om allt som inte är tonhöjd: längd, sammanbindning, längd och voice.
-					Element note = template.createElement("note");
-					Element duration = template.createElement("duration");
-					duration.setTextContent("1");
-					Element voice = template.createElement("voice");
-					voice.setTextContent("1");
-					Element type = template.createElement("type");
-					type.setTextContent("32nd");
-					Element beam = template.createElement("beam");
-					beam.setAttribute("number", "1");
-					beam.setTextContent(String.valueOf(getBeamingType(i, numberOfNotes)));
-
-					// Skapa info om tonhöjd.
-					Element unpitched = template.createElement("unpitched");
-					Element displayStep = template.createElement("display-step");
-					Element displayOctave = template.createElement("display-octave");
-					Element instrument = template.createElement("instrument");
-					displayStep.setTextContent("F");
-					displayOctave.setTextContent("4");
-					instrument.setAttribute("id", "P1-I77");
-					unpitched.appendChild(displayStep);
-					unpitched.appendChild(displayOctave);
-
-					note.appendChild(unpitched);
-					note.appendChild(duration);
-					note.appendChild(voice);
-					note.appendChild(type);
-					note.appendChild(beam);
-					note.appendChild(instrument);
-
-					measure.appendChild(note);
-
-				}
+				for (int i = 0; i < numberOfNotesToCreate; i++)	
+					measure.appendChild(MusicXMLTools.createUnpitchedNote(1, "32nd", getBeamingType(i, numberOfNotes), "F", 4, "P1-I77", template));
+				
+				//Skapa en extra paus på slutet istället för den sista tonen om anslag ska göras.
+				if (!element.shouldSlur())
+					measure.appendChild(MusicXMLTools.createRest(1, "32nd", false, template));
 			}
 			measure.appendChild(attributes);
 			part.appendChild(measure);
@@ -199,7 +162,8 @@ public class Converter {
 				Element noteElement = (Element) noteElements.item(j);
 				Element pitch = (Element) noteElement.getElementsByTagName("pitch").item(0);
 				Element rest = (Element) noteElement.getElementsByTagName("rest").item(0);
-
+				
+				//Om detta är en not
 				if (pitch != null) {
 					if (noteElement.getElementsByTagName("grace").getLength() > 0)
 						continue;
@@ -215,7 +179,32 @@ public class Converter {
 
 					float duration = (Float.parseFloat(((Element) noteElement.getElementsByTagName("duration").item(0)).getTextContent()) / divisions) / tempo;
 					
-					tones.add(SheetMusicElement.createNote(tone, alter, octave, duration));
+					NodeList ties = noteElement.getElementsByTagName("tie");
+					NodeList slurs = noteElement.getElementsByTagName("slur");
+					
+					boolean performSlur = false;
+					for (int t = 0; t < ties.getLength(); t++) {
+						Element tie = (Element) ties.item(t);
+						
+						if (tie.getAttribute("type").equals("start")) {
+							performSlur = true;
+							break;
+						}
+					}
+					
+					if (!performSlur)
+						for (int t = 0; t < slurs.getLength(); t++) {
+							Element slur = (Element) slurs.item(t);
+						
+							if (slur.getAttribute("type").equals("start")) {
+								performSlur = true;
+								break;
+							}
+						}
+					//Saker här nedanför körs alltid.
+					
+					
+					tones.add(SheetMusicElement.createNote(tone, alter, octave, duration, performSlur));
 				}
 				else if (rest != null) {
 					float duration = (Float.parseFloat(((Element) noteElement.getElementsByTagName("duration").item(0)).getTextContent()) / divisions) / tempo;

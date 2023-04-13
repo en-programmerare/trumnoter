@@ -104,6 +104,80 @@ public class MusicXMLTools {
 		return direction;
 	}
 	
+	/**
+	 * Creates a {@code<note>} element, containing a rest.<br>
+	 * It can be placed in a {@code <measure>}.
+	 * @param duration Divisions this rest lasts.
+	 * @param type Type of this rest. Can be "whole", "half", "quarter", "eight", "16th", "32nd"... 
+	 * See <a href="https://www.w3.org/2021/06/musicxml40/musicxml-reference/data-types/note-type-value/">reference</a>.
+	 * @param wholeMeasure Whether or not to display as a whole-measure rest.
+	 * @param template An XML document that will contain this new element.
+	 * @return A note element containing a rest.
+	 */
+	public static Element createRest(int duration, String type, boolean wholeMeasure, Document template) {
+		Element note = template.createElement("note");
+		Element durationElem = template.createElement("duration");
+		durationElem.setTextContent(String.valueOf(duration));
+		Element voice = template.createElement("voice");
+		voice.setTextContent("1");
+		Element typeElem = template.createElement("type");
+		typeElem.setTextContent(type);
+		
+		Element rest = template.createElement("rest");
+		rest.setAttribute("measure", wholeMeasure ? "yes" : "no");
+		note.appendChild(durationElem);
+		note.appendChild(voice);
+		note.appendChild(typeElem);
+		note.appendChild(rest);
+		return note;
+	}
+	
+	/**
+	 * Creates an unpitched note. (a {@code <note>} element with a {@code<unpitched>} element inside.)
+	 * Place in {@code <measure>}.
+	 * @param duration Divisions this rest lasts.
+	 * @param type Type of this rest. Can be "whole", "half", "quarter", "eight", "16th", "32nd"... 
+	 * See <a href="https://www.w3.org/2021/06/musicxml40/musicxml-reference/data-types/note-type-value/">reference</a>.
+	 * @param beamingType Beaming type. Can be "begin", "end" or "continue".
+	 * @param displayAsNote Which note this should be displayed as.
+	 * @param displayOnOctave Which octave this note should be displayed on.
+	 * @param instrumentId The instrument ID that should play this note.
+	 * @param template An XML document that will contain this new element.
+	 * @return An unpitched note element.
+	 */
+	public static Element createUnpitchedNote(int duration, String type, String beamingType, 
+			String displayAsNote, int displayOnOctave, String instrumentId, Document template) {
+		Element note = template.createElement("note");
+		Element durationElem = template.createElement("duration");
+		durationElem.setTextContent(String.valueOf(duration));
+		Element voice = template.createElement("voice");
+		voice.setTextContent("1");
+		Element typeElem = template.createElement("type");
+		typeElem.setTextContent(type);
+		Element beam = template.createElement("beam");
+		beam.setAttribute("number", "1");
+		beam.setTextContent(beamingType);
+
+		Element unpitched = template.createElement("unpitched");
+		Element displayStep = template.createElement("display-step");
+		Element displayOctave = template.createElement("display-octave");
+		Element instrument = template.createElement("instrument");
+		displayStep.setTextContent(displayAsNote);
+		displayOctave.setTextContent(String.valueOf(displayOnOctave));
+		instrument.setAttribute("id", instrumentId);
+		unpitched.appendChild(displayStep);
+		unpitched.appendChild(displayOctave);
+
+		note.appendChild(unpitched);
+		note.appendChild(durationElem);
+		note.appendChild(voice);
+		note.appendChild(typeElem);
+		note.appendChild(beam);
+		note.appendChild(instrument);
+		
+		return note;
+	}
+	
 	
 	
 	
