@@ -19,6 +19,7 @@ import org.xml.sax.SAXException;
 public class Converter {
 
 	private PrintStream debugStream;
+	private Messages translator;
 
 	/**
 	 * Converts the document to drum notes.
@@ -251,7 +252,7 @@ public class Converter {
 	 * @return Whether the document is partwise.
 	 * @throws IllegalArgumentException If the document is not partwise.
 	 */
-	public static Part[] getParts(Document document) {
+	public Part[] getParts(Document document) {
 		if (!isPartwise(document))
 			throw new IllegalArgumentException("Document is not partwise.");
 		
@@ -263,7 +264,7 @@ public class Converter {
 			Element name = (Element) names.item(0);
 			
 			if (name == null) {
-				parts.add(new Part("Namnlös del", i));
+				parts.add(new Part(translator.get("parts.noname"), i));
 				continue;
 			}
 			
@@ -272,8 +273,9 @@ public class Converter {
 		return parts.toArray(new Part[0]);
 	}
 	
-	/**
+	/** 
 	 * Creates a converter that uses {@code System.out} for debug information.
+	 * A new English translator is used.
 	 */
 	public Converter() {
 		this(System.out);
@@ -281,10 +283,29 @@ public class Converter {
 	
 	/**
 	 * Creates a converter that uses the supplied stream for debug information.
+	 * A new English translator is used.
 	 * @param debugStream Stream to print debug info to.
 	 */
 	public Converter(PrintStream debugStream) {
+		this(debugStream, new Messages("en"));
+	}
+	
+	/**
+	 * Creates a converter that uses {@code System.out} for debug information, and translates using the supplied translator.
+	 * @param translator Stream to print debug info to.
+	 */
+	public Converter(Messages translator) {
+		this(System.out, translator);
+	}
+	
+	/**
+	 * Creates a converter that uses the supplied stream for debug information, and translates using the supplied translator.
+	 * @param debugStream Stream to print debug info to.
+	 * @param translator A messages object.
+	 */
+	public Converter(PrintStream debugStream, Messages translator) {
 		this.debugStream = debugStream;
+		this.translator = translator;
 	}
 
 }

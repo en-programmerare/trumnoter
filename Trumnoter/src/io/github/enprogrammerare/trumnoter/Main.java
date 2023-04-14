@@ -52,13 +52,13 @@ public class Main {
 		
 		PrintStream output = new PrintStream(baos);
 
-		Converter converter = new Converter(output);
+		Converter converter = new Converter(output, messages);
 		boolean finish = false;
 		
 		try {
 			Document document = XMLParser.read(toRead);
 			
-			Part part = (Part) JOptionPane.showInputDialog(frame, messages.get("dialogue.part.content"), messages.get("dialogue.part.title"), JOptionPane.QUESTION_MESSAGE, null, Converter.getParts(document), null);
+			Part part = (Part) JOptionPane.showInputDialog(frame, messages.get("dialogue.part.content"), messages.get("dialogue.part.title"), JOptionPane.QUESTION_MESSAGE, null, converter.getParts(document), null);
 			
 			if (part == null)
 				throw new IllegalArgumentException("Program cancelled by user.");
